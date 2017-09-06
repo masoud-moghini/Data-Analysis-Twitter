@@ -1,10 +1,10 @@
 import json
 from os import path
 from datetime import datetime
-from tweepy import OAuthHandler, Stream
+from tweepy import OAuthHandler, Stream,API
 from tweepy.streaming import StreamListener
 from sqlalchemy import DateTime
-
+import pandas as pd
 from sqlalchemy.orm.exc import NoResultFound
 
 from tweeter_db import session, Tweet, Hashtag, User
@@ -26,9 +26,9 @@ def save_tweets():
     directory = _get_dir_absolute_path()
     filepath = path.join(directory, 'tweets.json')
 
-    listener = DatabaseListener(number_tweets_to_save=5)
+    listener = DatabaseListener(number_tweets_to_save=150)
     stream = Stream(auth, listener)
-    languages = ('en',)
+    languages = ('en,fa',)
     stream.sample(languages=languages)
 
 class DatabaseListener(StreamListener):
@@ -54,6 +54,7 @@ class DatabaseListener(StreamListener):
 
 def create_user_helper(user_data):
     # alias to shorten calls
+    #print(str(user_data))
     u = user_data
     user = User(uid=u['id_str'],
                 name=u['name'],
@@ -144,5 +145,34 @@ def _get_dir_absolute_path():
     return directory
 
 
+def look_up_tweet_info():
+    api=API(auth)
+
+    db_url='sqlite:///tweeter.sqlite3'
+    #tweets=pd.read_sql_table('tweets')
+    ids=pd.read_sql_query('SELECT tid FROM tweets',db_url).values
+    num=0
+    print((ids))
+    for tid in ids:
+        
+        num+=1
+        print(num)
+        try:
+            statue=api.get_status(tid[0])
+            print(statue.favorite_count)
+            print(statue.id)
+            # the_tweet=session.query(Tweet).filter_by(tid=tid)
+            # al_tweete=create_user_helper(statue,statue['user'])
+            # session.delete(the_tweet)
+            # session.add(al_tweete)
+            # session.commit()
+        except:
+            pass
+
+
+
+
+
 if __name__ == '__main__':
     save_tweets()
+    #look_up_tweet_info()
