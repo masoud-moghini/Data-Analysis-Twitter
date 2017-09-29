@@ -1,14 +1,13 @@
 import json
 from os import path
 from datetime import datetime
-from tweepy import OAuthHandler, Stream,API
+from tweepy import OAuthHandler, Stream, API
 from tweepy.streaming import StreamListener
 from sqlalchemy import DateTime
 import pandas as pd
 from sqlalchemy.orm.exc import NoResultFound
 
 from tweeter_db import session, Tweet, Hashtag, User
-
 
 consumer_key = 'dfyieLmEdSIonrq8SvMAE1yFN'
 consumer_secret = 'I7vpLV5HrKEyFqMN1fhKPfhg2vKmMhXanU88I5HAW6bDxIilbG'
@@ -31,17 +30,17 @@ def save_tweets():
     languages = ('en,fa',)
     stream.sample(languages=languages)
 
+
 class DatabaseListener(StreamListener):
     def __init__(self, number_tweets_to_save):
         self._final_count = number_tweets_to_save
         self._current_count = 0
 
-
     def on_data(self, raw_data):
         print('came here')
         data = json.loads(raw_data)
-        with open ('tweet.json','a') as file:
-            file.write(str(raw_data)+',')
+        with open('tweet.json', 'a') as file:
+            file.write(str(raw_data) + ',')
         if 'in_reply_to_status_id' in data:
             return self.on_status(data)
 
@@ -49,12 +48,13 @@ class DatabaseListener(StreamListener):
         self._current_count += 1
         print('Status count :{}'.format(self._current_count))
         save_to_database(data)
-        if self._current_count>=self._final_count:
+        if self._current_count >= self._final_count:
             return False
+
 
 def create_user_helper(user_data):
     # alias to shorten calls
-    #print(str(user_data))
+    # print(str(user_data))
     u = user_data
     user = User(uid=u['id_str'],
                 name=u['name'],
@@ -69,7 +69,7 @@ def create_user_helper(user_data):
                 listed_count=u['listed_count'],
                 geo_enabled=u['geo_enabled'],
                 lang=u.get('lang'))
-    
+
     print('hey')
     return user
 
@@ -146,33 +146,41 @@ def _get_dir_absolute_path():
 
 
 def look_up_tweet_info():
-    api=API(auth)
+    api = API(auth)
 
-    db_url='sqlite:///tweeter.sqlite3'
-    #tweets=pd.read_sql_table('tweets')
-    ids=pd.read_sql_query('SELECT tid FROM tweets',db_url).values
-    num=0
-    print((ids))
+    db_url = 'sqlite:///tweeter.sqlite3'
+    # tweets=pd.read_sql_table('tweets')
+    ids = pd.read_sql_query('SELECT tid FROM tweets', db_url).values
+    num = 0
     for tid in ids:
-        
-        num+=1
-        print(num)
+
+        num += 1
+        # print(num)
+
+        statue = api.statuses_lookup(tid, trim_user=True)
         try:
-            statue=api.get_status(tid[0])
-            print(statue.favorite_count)
-            print(statue.id)
-            # the_tweet=session.query(Tweet).filter_by(tid=tid)
-            # al_tweete=create_user_helper(statue,statue['user'])
-            # session.delete(the_tweet)
-            # session.add(al_tweete)
-            # session.commit()
+            fav_count = statue[0].favorite_count
+            retweet_count = statue[0].retweet_count
+            print('current favorite {}', fav_count)
+
+            the_tweet = session.query(Tweet).filter_by(tid=tid[0]).one()
+
+            print('previous favorite {}', the_tweet.favorite_count)
+
+            the_tweet.favorite_count = fav_count
+            the_tweet.retweet_count = retweet_count
         except:
             pass
 
-
-
+        session.commit()
 
 
 if __name__ == '__main__':
-    save_tweets()
-    #look_up_tweet_info()
+    # save_tweets()
+    look_up_tweet_info()
+
+"""
+source bin/activate
+cd Data-analyze/data-analysis
+
+"""
